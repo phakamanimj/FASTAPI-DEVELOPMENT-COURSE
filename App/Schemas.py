@@ -15,4 +15,8 @@ class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
+
+class Userlogin(BaseModel):
+    email:EmailStr
+    password:str
     

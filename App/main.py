@@ -8,10 +8,11 @@ import time
 from .import Model,Schemas
 from .database import engine ,SessionLocal
 from sqlalchemy.orm import Session
-from .routers import posts,Users
+from .routers import posts,Users,Authication
 
 
 app = FastAPI()
+
 
 
 #@app.get("/sqlalchemy", status_code=status.HTTP_200_OK)
@@ -21,5 +22,6 @@ app = FastAPI()
 
 app.include_router(posts.router)
 app.include_router(Users.router)
+app.include_router(Authication.router)
 
 

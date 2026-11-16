@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Response, status ,Depends,APIRouter
-from ..import Model,Schemas,Database_Connection,utils
+from ..import Model,Schemas,Database_Connection,utils,Auth2
 
 
 router = APIRouter()

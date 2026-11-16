@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from typing import Optional
 
 class UserOut(BaseModel):
@@ -7,12 +7,25 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
 
-class Post(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+class PostBase(BaseModel):
     title: str
     content: str
     published: bool = True
-   # owner: UserOut
 
+
+class PostCreate(PostBase):
+    pass
+
+
+class PostOut(PostBase):
+    id: int
+    created_at: datetime
+    user_id: int
+    owner: UserOut
+
+    model_config = ConfigDict(from_attributes=True)
 
 class User(BaseModel):
     name: str

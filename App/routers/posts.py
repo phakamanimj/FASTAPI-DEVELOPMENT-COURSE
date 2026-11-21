@@ -10,22 +10,28 @@ from ..import Model,Schemas,Database_Connection
 router = APIRouter()
 
 
-@router.get("/posts",status_code=status.HTTP_200_OK,response_model=list[Schemas.PostOut]) #decorator
-def get_posts():
-    # JOIN the users table so every post comes back with its owner's details
-    Database_Connection.cursor.execute("""SELECT posts.*,json_build_object('id', users.id, 'name', users.name, 'email', users.email) AS owner FROM posts JOIN users ON posts.user_id = users.id""")
-    post = Database_Connection.cursor.fetchall()
-    return post
+@router.get("/posts", status_code=status.HTTP_200_OK, response_model=list[Schemas.PostOut])
+def get_posts(limit: int = 10, skip: int = 0, search: str = ""):
+    Database_Connection.cursor.execute(
+        """
+        SELECT posts.*,
+               json_build_object('id', users.id, 'name', users.name, 'email', users.email) AS owner
+        FROM posts
+        JOIN users ON posts.user_id = users.id
+        WHERE posts.title ILIKE %s
+        ORDER BY posts.id
+        LIMIT %s OFFSET %s
+        """,
+        (f"%{search}%", limit, skip),
+    )
+    posts = Database_Connection.cursor.fetchall()
+
+    return posts
 
 @router.get("/getmy_posts",status_code=status.HTTP_200_OK,response_model=list[Schemas.PostOut])
-def getmy_posts(current_user: Schemas.TokenData = Depends(Auth2.get_current_user)):
+def getmy_posts(current_user: Schemas.TokenData = Depends(Auth2.get_current_user),):
   Database_Connection.cursor.execute("""
-      SELECT posts.*,
-             json_build_object('id', users.id, 'name', users.name, 'email', users.email) AS owner
-      FROM posts
-      JOIN users ON posts.user_id = users.id
-      WHERE posts.user_id = %s
-  """, (int(current_user.id),))
+      SELECT posts.*,json_build_object('id', users.id, 'name', users.name, 'email', users.email) AS owner FROM posts JOIN users ON posts.user_id = users.id WHERE posts.user_id = %s""", (int(current_user.id),))
   posts = Database_Connection.cursor.fetchall()
   return posts
 
@@ -102,6 +108,14 @@ def create_posts(new_post: Schemas.PostCreate, get_current_user: int = Depends(A
 
 @router.put("/posts/{id}", response_model=Schemas.PostOut)
 def update_post(id: int, post: Schemas.PostCreate, get_current_user: int = Depends(Auth2.get_current_user)):
+    Database_Connection.cursor.execute("SELECT * FROM posts WHERE id = %s", (id,))
+    post = Database_Connection.cursor.fetchone()
+    if post is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
+    
+    if post["user_id"] != int(get_current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this post")
+    
     Database_Connection.cursor.execute("""
         WITH updated AS (
             UPDATE posts SET title = %s, content = %s, published = %s
@@ -115,6 +129,5 @@ def update_post(id: int, post: Schemas.PostCreate, get_current_user: int = Depen
     """, (post.title, post.content, post.published, id))
     updated_post = Database_Connection.cursor.fetchone()
     Database_Connection.conn.commit()
-    if not updated_post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
     return updated_post
